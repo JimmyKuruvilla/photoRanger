@@ -1,0 +1,77 @@
+#!/usr/bin/env python2.7
+#stat gives ctime, mtime and atime - CTIME only gives creation time on windows!
+#filenames with spaces will not be recognized by cmd.exe and will not throw a python error
+
+#places all files in the present directorty into new directories named
+#after their creation date. Ignores directories and defaults to date modified if no EXIF data
+
+import os
+import datetime
+import EXIF
+import sys
+
+tag = "DateTimeOriginal"
+rejectlist=[]
+filelist=[]
+thisdir=os.getcwd()
+dirlist=os.listdir(thisdir)
+
+for thing in os.listdir(os.getcwd()):
+    if thing == 'photoranger.py' or thing == 'photoranger.exe' or thing == 'photoranger' or thing == 'EXIF.py':
+        pass
+    elif os.path.isfile(thing):
+        filelist.append(thing)
+
+print '\n ######Processing photos \n'
+
+for filename in filelist:
+    print filename
+    try:
+        photo=open(filename)
+    except:
+        print "'%s': Cannot open for reading.\n" % filename
+        continue
+
+    try:
+        data = EXIF.process_file(photo, details=False, stop_tag=tag)
+    except:
+        print 'ERROR ' + filename
+        continue
+
+    try:
+        date=data['EXIF DateTimeOriginal'].printable.replace(':', '.')[:-9]
+    except:
+        print ' No EXIF data \n'
+        rejectlist.append(filename)
+        continue
+    
+    print date
+    photo.close()
+
+#copy photos to dirs based on EXIF date pic taken
+    try:
+        os.mkdir(date)
+    except OSError:#dir exists
+        pass
+    finally:
+        os.system('mv "%s" "%s"' %(filename, date))
+##        os.system('del "%s"' %(filename))
+            
+#check for videos and use modification date to sort them.
+print '\n ######Processing rejects/videos \n'
+for reject in rejectlist:#moves dirs too
+    timestamp=os.stat(reject)[-2]
+    formatdate=datetime.date.fromtimestamp(timestamp).strftime('%Y.%m.%d')
+    print reject + ' moved to ' + formatdate
+
+    #check for videos and use modification date to sort them.
+    try:
+        os.mkdir(formatdate)
+    except OSError:#dir exists
+        pass
+    finally:
+        os.system('mv "%s" "%s"' %(reject, formatdate))
+##        os.system('del "%s"' %(reject))
+
+
+
